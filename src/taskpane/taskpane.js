@@ -1,0 +1,831 @@
+/* global Office, document, console, localStorage */
+
+const ATTR_KEY = "inboxAgent.attributes";
+const LOCAL_ATTR_KEY = "inboxAgent.local.";
+const NOTIFICATION_ID = "AportioAttributes";
+const CATEGORY_OPTIONS = ["Product", "Support", "Sales", "Billing"];
+const PRIORITY_OPTIONS = ["Low", "Normal", "High"];
+const DEFAULT_SENTIMENT_OPTIONS = ["Negative", "Neutral", "Positive"];
+const NOTIFICATION_ICON = "icon16";
+const API_BASE_URL = "http://localhost:8000";
+const ANALYZE_URL = "http://127.0.0.1:8000/analyze";
+const TEMPLATE_HTML = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title></title>
+  <style>
+    body, p {font-family: Arial, Helvetica, sans-serif;}
+  </style>
+</head>
+<body>
+  {{content}}
+</body>
+</html>`;
+
+function getItem() {
+  return Office.context?.mailbox?.item;
+}
+
+function updateStatus(text) {
+  const status = document.getElementById("statusText");
+  if (status) {
+    status.textContent = text;
+  }
+}
+
+function setAnalysisSummary(text) {
+  const summary = document.getElementById("summary");
+  if (summary) {
+    summary.textContent = text;
+  }
+}
+
+function setSuggestedActions(actions) {
+  const container = document.getElementById("suggestedActions");
+  if (!container) return;
+  container.innerHTML = "";
+  if (!actions || actions.length === 0) {
+    container.textContent = "No suggested actions.";
+    return;
+  }
+  actions.forEach((action) => {
+    const chip = document.createElement("span");
+    chip.className = "chip";
+    chip.textContent = action;
+    container.appendChild(chip);
+  });
+}
+
+function setSuggestedActionsStatus(text) {
+  const container = document.getElementById("suggestedActions");
+  if (container) {
+    container.textContent = text;
+  }
+}
+
+function normalizeSuggestedActions(value) {
+  if (!value) return [];
+  if (Array.isArray(value)) {
+    return value.map((entry) => String(entry)).filter(Boolean);
+  }
+  if (typeof value === "string") {
+    return value
+      .split(/[,;]\s*/g)
+      .map((entry) => entry.trim())
+      .filter(Boolean);
+  }
+  return [];
+}
+
+function setFormValues(attrs) {
+  const { category, sentiment, priority, assignee } = attrs || {};
+  if (category !== undefined) document.getElementById("category").value = category || "";
+  if (sentiment !== undefined) document.getElementById("sentiment").value = sentiment || "";
+  if (priority !== undefined) document.getElementById("priority").value = priority || "";
+  if (assignee !== undefined) document.getElementById("assignee").value = assignee || "";
+}
+
+function normalizeSelectValue(selectId, value) {
+  if (!value) return "";
+  const select = document.getElementById(selectId);
+  if (!select) return value;
+  const lower = String(value).toLowerCase();
+  const match = Array.from(select.options).find(
+    (opt) => String(opt.value).toLowerCase() === lower
+  );
+  return match ? match.value : value;
+}
+
+function ensureSelectOption(selectId, value) {
+  if (!value) return;
+  const select = document.getElementById(selectId);
+  if (!select) return;
+  const exists = Array.from(select.options).some((opt) => opt.value === value);
+  if (!exists) {
+    const option = document.createElement("option");
+    option.value = value;
+    option.textContent = value;
+    select.appendChild(option);
+  }
+}
+
+function applyAnalysisToForm(data) {
+  const category = normalizeSelectValue("category", data.category || "");
+  const sentiment = normalizeSelectValue("sentiment", data.sentiment || "");
+  const priority = normalizeSelectValue("priority", data.priority || "");
+  const assignee = data.assignee || "";
+
+  ensureSelectOption("category", category);
+  ensureSelectOption("sentiment", sentiment);
+  ensureSelectOption("priority", priority);
+
+  setFormValues({ category, sentiment, priority, assignee });
+}
+
+function readFormValues() {
+  return {
+    category: document.getElementById("category").value,
+    sentiment: document.getElementById("sentiment").value,
+    priority: document.getElementById("priority").value,
+    assignee: document.getElementById("assignee").value.trim(),
+  };
+}
+
+function buildSummary(attrs) {
+  const parts = [];
+  if (attrs.category) parts.push(`Category: ${attrs.category}`);
+  if (attrs.sentiment) parts.push(`Sentiment: ${attrs.sentiment}`);
+  if (attrs.priority) parts.push(`Priority: ${attrs.priority}`);
+  if (attrs.assignee) parts.push(`Assignee: ${attrs.assignee}`);
+  return parts.length ? parts.join(" | ") : "No attributes set";
+}
+
+function escapeHtml(value) {
+  return String(value || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function renderTemplate(attrs) {
+  const summary = buildSummary(attrs);
+  const includeSummary = summary !== "No attributes set";
+  const summaryBlock = includeSummary ? `<p>${escapeHtml(summary)}</p>` : "";
+  const content = `<p>Hi</p><p>This is a template reply.</p>${summaryBlock}<p>Thanks</p>`;
+  return TEMPLATE_HTML.replace("{{content}}", content).replace("{{footer}}", "");
+}
+
+function renderTemplateById(templateId, attrs) {
+  if (templateId === "processing") {
+    const summary = buildSummary(attrs);
+    const includeSummary = summary !== "No attributes set";
+    const summaryBlock = includeSummary ? `<p>${escapeHtml(summary)}</p>` : "";
+    const content = `<p>Hi</p><p>I am working on this and will reply within 3 business days.</p>${summaryBlock}<p>Thanks</p>`;
+    return TEMPLATE_HTML.replace("{{content}}", content).replace("{{footer}}", "");
+  }
+
+  return renderTemplate(attrs);
+}
+
+function getLocalKey() {
+  const item = getItem();
+  if (item?.itemId) {
+    return `${LOCAL_ATTR_KEY}${item.itemId}`;
+  }
+  return null;
+}
+
+function saveLocalAttributes(attrs) {
+  const key = getLocalKey();
+  if (key) {
+    localStorage.setItem(key, JSON.stringify(attrs));
+  }
+}
+
+function loadLocalAttributes() {
+  const key = getLocalKey();
+  if (!key) return null;
+  const raw = localStorage.getItem(key);
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+
+function clearLocalAttributes() {
+  const key = getLocalKey();
+  if (key) {
+    localStorage.removeItem(key);
+  }
+}
+
+function withCustomProperties(handler) {
+  return new Promise((resolve, reject) => {
+    const item = getItem();
+    if (!item) {
+      reject(new Error("Mailbox item is not available."));
+      return;
+    }
+
+    item.loadCustomPropertiesAsync((result) => {
+      if (result.status !== Office.AsyncResultStatus.Succeeded) {
+        reject(result.error || new Error("Unable to load custom properties."));
+        return;
+      }
+
+      handler(result.value, resolve, reject);
+    });
+  });
+}
+
+function loadAttributes() {
+  return withCustomProperties((props, resolve, reject) => {
+    try {
+      const raw = props.get(ATTR_KEY);
+      if (!raw) {
+        resolve(null);
+        return;
+      }
+      resolve(JSON.parse(raw));
+    } catch (err) {
+      reject(err);
+    }
+  });
+}
+
+function saveAttributes(attrs) {
+  return withCustomProperties((props, resolve, reject) => {
+    props.set(ATTR_KEY, JSON.stringify(attrs));
+    props.saveAsync((result) => {
+      if (result.status === Office.AsyncResultStatus.Succeeded) {
+        resolve();
+        return;
+      }
+      reject(result.error || new Error("Unable to save attributes."));
+    });
+  });
+}
+
+function clearAttributes() {
+  return withCustomProperties((props, resolve, reject) => {
+    try {
+      if (typeof props.remove === "function") {
+        props.remove(ATTR_KEY);
+      } else {
+        props.set(ATTR_KEY, "null");
+      }
+      props.saveAsync((result) => {
+        if (result.status === Office.AsyncResultStatus.Succeeded) {
+          resolve();
+          return;
+        }
+        reject(result.error || new Error("Unable to clear attributes."));
+      });
+    } catch (err) {
+      reject(err);
+    }
+  });
+}
+
+function pushNotification(message, type = "informationalMessage") {
+  return new Promise((resolve) => {
+    const item = getItem();
+    if (!item?.notificationMessages?.replaceAsync) {
+      resolve();
+      return;
+    }
+
+    const details = { type, message };
+    if (type === "informationalMessage") {
+      details.icon = NOTIFICATION_ICON;
+      details.persistent = true;
+    }
+
+    try {
+      item.notificationMessages.replaceAsync(NOTIFICATION_ID, details, () => resolve());
+    } catch (e) {
+      console.warn("Notification not shown (ignored):", e);
+      resolve();
+    }
+  });
+}
+
+function setSelectOptions(select, options) {
+  if (!select) {
+    return;
+  }
+  const placeholder = select.querySelector('option[value=""]');
+  select.innerHTML = "";
+  if (placeholder) {
+    select.appendChild(placeholder);
+  } else {
+    const blank = document.createElement("option");
+    blank.value = "";
+    blank.textContent = "—";
+    select.appendChild(blank);
+  }
+  options.forEach((option) => {
+    const opt = document.createElement("option");
+    opt.value = option;
+    opt.textContent = option;
+    select.appendChild(opt);
+  });
+}
+
+function updateItemCategories(selected, managed) {
+  return new Promise((resolve, reject) => {
+    const item = getItem();
+    if (!item?.categories?.getAsync) {
+      resolve();
+      return;
+    }
+
+    item.categories.getAsync((result) => {
+      if (result.status !== Office.AsyncResultStatus.Succeeded) {
+        reject(result.error || new Error("Unable to read categories."));
+        return;
+      }
+
+      const normalizeCategory = (name) => String(name || "").trim().toLowerCase();
+      const current = (result.value || []).map((name) => String(name || ""));
+      const selectedSet = new Set(selected.filter(Boolean).map(normalizeCategory));
+      const managedSet = new Set(managed.map(normalizeCategory));
+      const remaining = current.filter((name) => {
+        const normalized = normalizeCategory(name);
+        if (!managedSet.has(normalized)) {
+          return true;
+        }
+        return selectedSet.has(normalized);
+      });
+      const toRemove = current.filter(
+        (name) => managedSet.has(normalizeCategory(name)) && !selectedSet.has(normalizeCategory(name))
+      );
+      const toAdd = selected.filter(
+        (name) =>
+          name &&
+          !current.some((existing) => normalizeCategory(existing) === normalizeCategory(name))
+      );
+
+      const finish = () => resolve();
+      const addCategories = () => {
+        if (!toAdd.length) {
+          finish();
+          return;
+        }
+        item.categories.addAsync(toAdd, (addResult) => {
+          if (addResult.status !== Office.AsyncResultStatus.Succeeded) {
+            reject(addResult.error || new Error("Unable to add category."));
+            return;
+          }
+          finish();
+        });
+      };
+
+      if (!toRemove.length) {
+        addCategories();
+        return;
+      }
+
+      const removeThenAdd = () => {
+        item.categories.removeAsync(toRemove, (removeResult) => {
+          if (removeResult.status !== Office.AsyncResultStatus.Succeeded) {
+            reject(removeResult.error || new Error("Unable to remove categories."));
+            return;
+          }
+          addCategories();
+        });
+      };
+
+      if (typeof item.categories.setAsync === "function") {
+        item.categories.setAsync(remaining, (setResult) => {
+          if (setResult.status === Office.AsyncResultStatus.Succeeded) {
+            resolve();
+            return;
+          }
+          // Fallback for hosts that report setAsync but do not allow it.
+          removeThenAdd();
+        });
+        return;
+      }
+
+      removeThenAdd();
+    });
+  });
+}
+
+function clearAllCategories() {
+  return new Promise((resolve, reject) => {
+    const item = getItem();
+    if (!item?.categories?.getAsync) {
+      resolve();
+      return;
+    }
+
+    item.categories.getAsync((result) => {
+      if (result.status !== Office.AsyncResultStatus.Succeeded) {
+        reject(result.error || new Error("Unable to read categories."));
+        return;
+      }
+
+      const current = (result.value || [])
+        .map((name) => String(name || "").trim())
+        .filter(Boolean);
+      if (!current.length) {
+        resolve();
+        return;
+      }
+
+      item.categories.removeAsync(current, (removeResult) => {
+        if (removeResult.status === Office.AsyncResultStatus.Succeeded) {
+          resolve();
+          return;
+        }
+
+        if (typeof item.categories.setAsync === "function") {
+          item.categories.setAsync([], (setResult) => {
+            if (setResult.status === Office.AsyncResultStatus.Succeeded) {
+              resolve();
+              return;
+            }
+            reject(setResult.error || new Error("Unable to clear categories."));
+          });
+          return;
+        }
+
+        reject(removeResult.error || new Error("Unable to clear categories."));
+      });
+    });
+  });
+}
+
+function updateItemImportance(priority) {
+  return new Promise((resolve, reject) => {
+    const item = getItem();
+    if (!item?.importance?.setAsync) {
+      resolve();
+      return;
+    }
+
+    const value = priority ? priority.toLowerCase() : "normal";
+    item.importance.setAsync(value, (result) => {
+      if (result.status === Office.AsyncResultStatus.Succeeded) {
+        resolve();
+        return;
+      }
+      reject(result.error || new Error("Unable to set importance."));
+    });
+  });
+}
+
+function clearNotification() {
+  return new Promise((resolve) => {
+    const item = getItem();
+    if (!item?.notificationMessages) {
+      resolve();
+      return;
+    }
+    if (typeof item.notificationMessages.removeAsync === "function") {
+      item.notificationMessages.removeAsync(NOTIFICATION_ID, () => resolve());
+      return;
+    }
+    resolve();
+  });
+}
+
+async function hydrateForm(options = {}) {
+  const { preserveForm = false, allowLocalFallback = true, notify = true } = options;
+  const item = getItem();
+  if (item?.subject) {
+    setAnalysisSummary(`Analyzing: ${item.subject}`);
+  } else {
+    setAnalysisSummary("Analyzing...");
+  }
+  setSuggestedActionsStatus("Analyzing...");
+  runAiAnalysis();
+
+  try {
+    const sentimentSelect = document.getElementById("sentiment");
+    setSelectOptions(sentimentSelect, DEFAULT_SENTIMENT_OPTIONS);
+
+    updateStatus("loading saved attributes...");
+    let attrs = await loadAttributes();
+    if (!attrs && allowLocalFallback) {
+      attrs = loadLocalAttributes();
+      if (attrs) {
+        updateStatus("loaded local attributes");
+        if (notify) {
+          await pushNotification(`Restored local attributes • ${buildSummary(attrs)}`);
+        }
+      }
+    }
+    if (attrs) {
+      if (!preserveForm) {
+        setFormValues(attrs);
+      }
+      updateStatus("loaded saved attributes");
+      if (notify) {
+        await pushNotification(`Restored attributes • ${buildSummary(attrs)}`);
+      }
+    } else {
+      updateStatus("ready");
+    }
+  } catch (err) {
+    console.error("Failed to load saved attributes", err);
+    updateStatus("ready (attributes not loaded)");
+  }
+}
+
+async function handleApply() {
+  const attrs = readFormValues();
+  updateStatus("applying attributes...");
+
+  try {
+    await saveAttributes(attrs);
+    const selectedCategories = [];
+    if (attrs.category) selectedCategories.push(attrs.category);
+    const managedCategories = CATEGORY_OPTIONS;
+    await updateItemCategories(selectedCategories, managedCategories);
+    try {
+      await updateItemImportance(attrs.priority);
+    } catch (err) {
+      console.warn("Failed to set importance.", err);
+      await pushNotification(
+        "Priority not updated in Outlook (importance update failed).",
+        "errorMessage"
+      );
+    }
+    saveLocalAttributes(attrs);
+    const summary = buildSummary(attrs);
+    updateStatus("attributes saved to this item");
+    await pushNotification(`Aportio saved • ${summary}`);
+  } catch (err) {
+    console.error("Failed to apply attributes", err);
+    saveLocalAttributes(attrs);
+    const errorText = err && err.message ? err.message : String(err);
+    updateStatus("saved locally (server save failed)");
+    await pushNotification(
+      `Saved locally only (could not save to mailbox): ${errorText}`,
+      "errorMessage"
+    );
+  }
+}
+
+async function handleClear() {
+  updateStatus("clearing attributes...");
+  const errors = [];
+  const recordError = (label, err) => {
+    errors.push(label);
+    console.error(`Failed to clear ${label}`, err);
+  };
+
+  try {
+    await clearAttributes();
+  } catch (err) {
+    recordError("stored attributes", err);
+  }
+
+  try {
+    clearLocalAttributes();
+  } catch (err) {
+    recordError("local attributes", err);
+  }
+
+  try {
+    await clearAllCategories();
+  } catch (err) {
+    recordError("categories", err);
+  }
+
+  try {
+    await updateItemImportance("");
+  } catch (err) {
+    recordError("importance", err);
+  }
+
+  setFormValues({
+    category: "",
+    sentiment: "",
+    priority: "",
+    assignee: "",
+  });
+  await clearNotification();
+
+  if (errors.length) {
+    updateStatus(`clear done (failed: ${errors.join(", ")})`);
+  } else {
+    updateStatus("attributes cleared");
+  }
+}
+
+function handleSnooze() {
+  updateStatus("snoozed (demo)");
+}
+
+function handleQuickAction(text) {
+  updateStatus(text);
+}
+
+function getItemBodyText() {
+  return new Promise((resolve) => {
+    const item = getItem();
+    if (!item?.body?.getAsync) {
+      resolve("");
+      return;
+    }
+    item.body.getAsync(Office.CoercionType.Text, (result) => {
+      if (result.status === Office.AsyncResultStatus.Succeeded) {
+        resolve(result.value || "");
+        return;
+      }
+      resolve("");
+    });
+  });
+}
+
+async function runAiAnalysis(options = {}) {
+  const { applyToForm = false } = options;
+  const item = getItem();
+  if (!item) {
+    setAnalysisSummary("AI analysis not available.");
+    setSuggestedActions([]);
+    return;
+  }
+
+  setAnalysisSummary("Analyzing...");
+  setSuggestedActionsStatus("Analyzing...");
+
+  const subject = item.subject || "";
+  const body = await getItemBodyText();
+
+  try {
+    const response = await fetch(ANALYZE_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ subject, body }),
+    });
+    if (!response.ok) {
+      throw new Error(`Analyze request failed (${response.status})`);
+    }
+
+    const data = await response.json();
+    const summaryText =
+      data.rationale ||
+      data.reply_suggestion ||
+      "No analysis returned.";
+    const suggestedActions = normalizeSuggestedActions(
+      data.actions && Array.isArray(data.actions) && data.actions.length
+        ? data.actions
+        : data.reply_suggestion
+    );
+
+    setAnalysisSummary(summaryText);
+    setSuggestedActions(suggestedActions);
+
+    if (applyToForm) {
+      applyAnalysisToForm(data);
+      updateStatus("analysis applied to attributes");
+    }
+  } catch (err) {
+    console.error("AI analysis failed", err);
+    setAnalysisSummary("AI analysis failed.");
+    setSuggestedActions([]);
+  }
+}
+
+async function handleAiReply() {
+  const item = getItem();
+  if (!item) {
+    updateStatus("ai reply not available");
+    return;
+  }
+
+  updateStatus("generating ai reply...");
+  const subject = item.subject || "";
+  const body = await getItemBodyText();
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/reply`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ subject, body, tone: "professional" }),
+    });
+    if (!response.ok) {
+      throw new Error(`Reply request failed (${response.status})`);
+    }
+    const data = await response.json();
+    const replyText = data.reply_text || "";
+    if (!replyText) {
+      throw new Error("Empty reply from server");
+    }
+
+    if (item.body?.setAsync) {
+      const replyHtml = escapeHtml(replyText).replace(/\n/g, "<br>");
+      item.body.setAsync(replyHtml, { coercionType: Office.CoercionType.Html }, (result) => {
+        if (result.status === Office.AsyncResultStatus.Succeeded) {
+          updateStatus("ai reply inserted");
+          return;
+        }
+        updateStatus("ai reply insert failed");
+      });
+      return;
+    }
+
+    if (item.displayReplyForm) {
+      item.displayReplyForm(replyText);
+      updateStatus("ai reply draft opened");
+      return;
+    }
+
+    updateStatus("ai reply not available");
+  } catch (err) {
+    console.error("AI reply failed", err);
+    updateStatus("ai reply failed");
+  }
+}
+
+function handleInsertTemplate() {
+  const mailbox = Office.context?.mailbox;
+  const attrs = readFormValues();
+  const templateId = document.getElementById("templateSelect")?.value || "default";
+  const html = renderTemplateById(templateId, attrs);
+
+  if (mailbox?.displayNewMessageForm) {
+    try {
+      mailbox.displayNewMessageForm({ htmlBody: html });
+      updateStatus("new email opened");
+      return;
+    } catch (err) {
+      console.error("New email create failed", err);
+      updateStatus("new email open failed");
+      return;
+    }
+  }
+
+  const item = getItem();
+  if (!item?.body?.setAsync) {
+    updateStatus("template insert not available");
+    return;
+  }
+
+  const itemClass = item.itemClass || "";
+  const shouldReplace =
+    Boolean(item.inReplyTo) || /reply|forward/i.test(itemClass);
+
+  const done = (result) => {
+    if (result?.status === Office.AsyncResultStatus.Succeeded) {
+      updateStatus("template inserted");
+      return;
+    }
+    const err = result?.error || new Error("Unable to insert template.");
+    console.error("Template insert failed", err);
+    updateStatus("template insert failed");
+  };
+
+  if (shouldReplace) {
+    item.body.setAsync(html, { coercionType: Office.CoercionType.Html }, done);
+    return;
+  }
+
+  if (!item.body.appendAsync) {
+    item.body.setAsync(html, { coercionType: Office.CoercionType.Html }, done);
+    return;
+  }
+
+  item.body.appendAsync(html, { coercionType: Office.CoercionType.Html }, done);
+}
+
+function handleReplyWithTemplate() {
+  const item = getItem();
+  if (!item?.displayReplyForm) {
+    updateStatus("reply with template not available");
+    return;
+  }
+
+  const attrs = readFormValues();
+  const templateId = document.getElementById("templateSelect")?.value || "default";
+  const html = renderTemplateById(templateId, attrs);
+  try {
+    item.displayReplyForm(html);
+    updateStatus("reply draft opened");
+  } catch (err) {
+    console.error("Reply with template failed", err);
+    updateStatus("reply template failed");
+  }
+}
+
+Office.onReady(() => {
+  hydrateForm();
+
+  document.getElementById("btnApply").addEventListener("click", () => {
+    handleApply();
+  });
+
+  document.getElementById("btnSnooze").addEventListener("click", () => handleSnooze());
+  document.getElementById("btnRefresh").addEventListener("click", () => {
+    hydrateForm({ preserveForm: true, allowLocalFallback: false, notify: true });
+  });
+  document.getElementById("btnClear").addEventListener("click", () => {
+    handleClear();
+  });
+  document
+    .getElementById("btnWorkflow")
+    .addEventListener("click", () => handleQuickAction("workflow started (demo)"));
+  document
+    .getElementById("btnAnalyze")
+    .addEventListener("click", () => runAiAnalysis({ applyToForm: true }));
+  document
+    .getElementById("btnTemplate")
+    .addEventListener("click", () => handleInsertTemplate());
+  document
+    .getElementById("btnReplyTemplate")
+    .addEventListener("click", () => handleReplyWithTemplate());
+  document
+    .getElementById("btnReply")
+    .addEventListener("click", () => handleAiReply());
+});

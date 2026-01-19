@@ -1,0 +1,53 @@
+{% load i18n %}{% autoescape on %}
+<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml" xmlns:o="urn:schemas-microsoft-com:office:office">
+<head>
+  <meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width,initial-scale=1">
+	<meta name="x-apple-disable-message-reformatting">
+	<title></title>
+	<!--[if mso]>
+    <noscript>
+      <xml>
+        <o:OfficeDocumentSettings>
+          <o:PixelsPerInch>96</o:PixelsPerInch>
+        </o:OfficeDocumentSettings>
+      </xml>
+    </noscript>
+  <![endif]-->
+  <link rel="noopener" target="_blank" href="https://fonts.googleapis.com/css2?family=Roboto&display=swap" rel="stylesheet">
+	<style>
+		table, td, div, h1, p {font-family:  'Roboto', Helvetica, Arial, sans-serif;}
+		table, td {border:0px transparent #000000 !important;}
+	</style>
+</head>
+  <body style="margin:0;padding:1em;background:#ffffff;">
+    <table role="presentation" style="width:100%;border-collapse:collapse;border:0;border-spacing:0;border-color: transparent;background:#ffffff;">
+      <tr>
+        <td align="center" style="padding:0;">
+          <table role="presentation" style="width:75%;border-collapse:collapse;border:0;border-spacing:0;border-color: transparent;background:#ffffff;">
+            <tr>
+              <td align="left" style="padding-top:0;"></td>
+            </tr>
+            <tr>
+              <td align="left" style="padding:1em;">{% block content %}{% endblock content %}</td>
+            </tr>
+            <tr>
+              <td align="center" style="padding-top:1em;">
+                {% block support %}
+                If you have any questions or concerns related to this email, feel free to email <a href="mailto:support@aportio.com">support@aportio.com</a>.
+                {% endblock support %}
+                </td>
+            </tr>
+            <tr>
+              <td align="center" style="padding-top:2em;font-size:0.8rem;">
+                {% block footer %}{% include 'base_footer.html' %}{% endblock %}
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>
+{% endautoescape %}
