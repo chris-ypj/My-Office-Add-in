@@ -65,6 +65,13 @@ module.exports = async (env, options) => {
         chunks: ["polyfill", "taskpane"],
       }),
 
+      // ✅ Output to /taskpane/aportio.html
+      new HtmlWebpackPlugin({
+        filename: "taskpane/aportio.html",
+        template: "./src/taskpane/aportio.html",
+        chunks: ["polyfill", "taskpane"],
+      }),
+
       // ✅ Output to /commands/commands.html
       new HtmlWebpackPlugin({
         filename: "commands/commands.html",
@@ -99,6 +106,8 @@ module.exports = async (env, options) => {
 
     devServer: {
       headers: { "Access-Control-Allow-Origin": "*" },
+      // Allow Cloudflare Tunnel host to proxy to the dev server.
+      allowedHosts: "all",
       // Office web clients often block localhost WS; disable HMR/WS to avoid errors.
       webSocketServer: false,
       server: {

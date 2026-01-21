@@ -7,8 +7,14 @@ const CATEGORY_OPTIONS = ["Product", "Support", "Sales", "Billing"];
 const PRIORITY_OPTIONS = ["Low", "Normal", "High"];
 const DEFAULT_SENTIMENT_OPTIONS = ["Negative", "Neutral", "Positive"];
 const NOTIFICATION_ICON = "icon16";
-const API_BASE_URL = "http://localhost:8000";
-const ANALYZE_URL = "http://127.0.0.1:8000/analyze";
+const API_BASE_URL = "https://laboratory-than-moved-excellent.trycloudflare.com";
+const ANALYZE_URL = "https://laboratory-than-moved-excellent.trycloudflare.com/analyze";
+const API_KEY = "24324ddadasadasdasdawqeqwewewqqwewqzx";
+const REPORTS_ENDPOINT = "/status";
+const DEFAULT_REPORTS_BASE_URL =
+  "https://laboratory-than-moved-excellent.trycloudflare.com";
+const REPORTS_BEARER_TOKEN =
+  "GYIVwvd7MXGLTJVjAdySzPkI1yq5606LzPcnjqdRBwHsKxBUyrhwjIVDnkyRNlh";
 const TEMPLATE_HTML = `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -26,6 +32,10 @@ const TEMPLATE_HTML = `<!DOCTYPE html>
 
 function getItem() {
   return Office.context?.mailbox?.item;
+}
+
+function isComposeItem(item) {
+  return Boolean(item?.body?.setAsync);
 }
 
 function updateStatus(text) {
@@ -318,6 +328,101 @@ function setSelectOptions(select, options) {
   });
 }
 
+function setSelectOptionsWithValue(select, options) {
+  if (!select) {
+    return;
+  }
+  const placeholder = select.querySelector('option[value=""]');
+  select.innerHTML = "";
+  if (placeholder) {
+    select.appendChild(placeholder);
+  } else {
+    const blank = document.createElement("option");
+    blank.value = "";
+    blank.textContent = "—";
+    select.appendChild(blank);
+  }
+  options.forEach((option) => {
+    const opt = document.createElement("option");
+    opt.value = option.value;
+    opt.textContent = option.label;
+    select.appendChild(opt);
+  });
+}
+
+function getReportsFormValues() {
+  const baseUrl = DEFAULT_REPORTS_BASE_URL;
+  const token = REPORTS_BEARER_TOKEN;
+  return { baseUrl, token };
+}
+
+function buildReportsUrl(baseUrl) {
+  if (!baseUrl) return "";
+  return `${baseUrl.replace(/\/+$/, "")}${REPORTS_ENDPOINT}`;
+}
+
+
+function formatReportLabel(item, index) {
+  const subject = item?.subject || item?.email_subject || item?.title || item?.name;
+  const id = item?.id || item?.pk || item?.uuid;
+  if (subject && id) return `${subject} (#${id})`;
+  if (subject) return subject;
+  if (id) return `Report ${id}`;
+  return `Report ${index + 1}`;
+}
+
+function normalizeReportItems(payload) {
+  if (Array.isArray(payload?.data?.reporter)) return payload.data.reporter;
+  return [];
+}
+
+async function loadReportEmails() {
+  const select = document.getElementById("reportEmailsSelect");
+  if (select) {
+    setSelectOptionsWithValue(select, []);
+  }
+
+  const { baseUrl, token } = getReportsFormValues();
+  if (!baseUrl || !token) {
+    updateStatus("reports: base url and token required");
+    return;
+  }
+
+  updateStatus("reports: loading...");
+
+  const url = buildReportsUrl(baseUrl);
+  try {
+    const response = await fetch(url, {
+      headers: {
+        Accept: "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (!response.ok) {
+      updateStatus(`reports: request failed (${response.status})`);
+      return;
+    }
+
+    const data = await response.json();
+    const items = normalizeReportItems(data);
+    const options = items.map((item, index) => {
+      const id = String(index + 1);
+      return {
+        value: String(id),
+        label: String(item),
+      };
+    });
+    if (select) {
+      setSelectOptionsWithValue(select, options);
+    }
+    updateStatus(`reports: loaded ${items.length}`);
+  } catch (err) {
+    console.error("Report fetch failed", err);
+    updateStatus("reports: request error");
+  }
+}
+
 function updateItemCategories(selected, managed) {
   return new Promise((resolve, reject) => {
     const item = getItem();
@@ -447,6 +552,10 @@ function clearAllCategories() {
 function updateItemImportance(priority) {
   return new Promise((resolve, reject) => {
     const item = getItem();
+    if (!isComposeItem(item)) {
+      resolve();
+      return;
+    }
     if (!item?.importance?.setAsync) {
       resolve();
       return;
@@ -463,6 +572,12 @@ function updateItemImportance(priority) {
   });
 }
 
+function isUnsupportedHostError(err) {
+  if (!err) return false;
+  const message = String(err.message || "").toLowerCase();
+  return err.code === 5000 || message.includes("not supported");
+}
+
 function clearNotification() {
   return new Promise((resolve) => {
     const item = getItem();
@@ -470,11 +585,34 @@ function clearNotification() {
       resolve();
       return;
     }
-    if (typeof item.notificationMessages.removeAsync === "function") {
-      item.notificationMessages.removeAsync(NOTIFICATION_ID, () => resolve());
+    const notifications = item.notificationMessages;
+    const fallbackReplace = () => {
+      if (typeof notifications.replaceAsync !== "function") {
+        resolve();
+        return;
+      }
+      try {
+        notifications.replaceAsync(
+          NOTIFICATION_ID,
+          { type: "informationalMessage", message: "" },
+          () => resolve()
+        );
+      } catch (err) {
+        console.warn("Notification clear fallback failed (ignored):", err);
+        resolve();
+      }
+    };
+    if (typeof notifications.removeAsync === "function") {
+      notifications.removeAsync(NOTIFICATION_ID, (result) => {
+        if (result?.status === Office.AsyncResultStatus.Succeeded) {
+          resolve();
+          return;
+        }
+        fallbackReplace();
+      });
       return;
     }
-    resolve();
+    fallbackReplace();
   });
 }
 
@@ -526,11 +664,26 @@ async function handleApply() {
   updateStatus("applying attributes...");
 
   try {
-    await saveAttributes(attrs);
+    let savedToMailbox = true;
+    try {
+      await saveAttributes(attrs);
+    } catch (err) {
+      if (isUnsupportedHostError(err)) {
+        savedToMailbox = false;
+      } else {
+        throw err;
+      }
+    }
     const selectedCategories = [];
     if (attrs.category) selectedCategories.push(attrs.category);
     const managedCategories = CATEGORY_OPTIONS;
-    await updateItemCategories(selectedCategories, managedCategories);
+    try {
+      await updateItemCategories(selectedCategories, managedCategories);
+    } catch (err) {
+      if (!isUnsupportedHostError(err)) {
+        throw err;
+      }
+    }
     try {
       await updateItemImportance(attrs.priority);
     } catch (err) {
@@ -542,7 +695,11 @@ async function handleApply() {
     }
     saveLocalAttributes(attrs);
     const summary = buildSummary(attrs);
-    updateStatus("attributes saved to this item");
+    updateStatus(
+      savedToMailbox
+        ? "attributes saved to this item"
+        : "attributes saved locally (mailbox properties not supported)"
+    );
     await pushNotification(`Aportio saved • ${summary}`);
   } catch (err) {
     console.error("Failed to apply attributes", err);
@@ -647,7 +804,7 @@ async function runAiAnalysis(options = {}) {
     const response = await fetch(ANALYZE_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ subject, body }),
+      body: JSON.stringify({ subject, body, api_key: API_KEY }),
     });
     if (!response.ok) {
       throw new Error(`Analyze request failed (${response.status})`);
@@ -693,7 +850,12 @@ async function handleAiReply() {
     const response = await fetch(`${API_BASE_URL}/reply`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ subject, body, tone: "professional" }),
+      body: JSON.stringify({
+        subject,
+        body,
+        tone: "professional",
+        api_key: API_KEY,
+      }),
     });
     if (!response.ok) {
       throw new Error(`Reply request failed (${response.status})`);
@@ -801,31 +963,25 @@ function handleReplyWithTemplate() {
 
 Office.onReady(() => {
   hydrateForm();
+  loadReportEmails();
 
-  document.getElementById("btnApply").addEventListener("click", () => {
-    handleApply();
-  });
+  const bindClick = (id, handler) => {
+    const el = document.getElementById(id);
+    if (!el) {
+      return;
+    }
+    el.addEventListener("click", handler);
+  };
 
-  document.getElementById("btnSnooze").addEventListener("click", () => handleSnooze());
-  document.getElementById("btnRefresh").addEventListener("click", () => {
+  bindClick("btnApply", () => handleApply());
+  bindClick("btnSnooze", () => handleSnooze());
+  bindClick("btnRefresh", () => {
     hydrateForm({ preserveForm: true, allowLocalFallback: false, notify: true });
   });
-  document.getElementById("btnClear").addEventListener("click", () => {
-    handleClear();
-  });
-  document
-    .getElementById("btnWorkflow")
-    .addEventListener("click", () => handleQuickAction("workflow started (demo)"));
-  document
-    .getElementById("btnAnalyze")
-    .addEventListener("click", () => runAiAnalysis({ applyToForm: true }));
-  document
-    .getElementById("btnTemplate")
-    .addEventListener("click", () => handleInsertTemplate());
-  document
-    .getElementById("btnReplyTemplate")
-    .addEventListener("click", () => handleReplyWithTemplate());
-  document
-    .getElementById("btnReply")
-    .addEventListener("click", () => handleAiReply());
+  bindClick("btnClear", () => handleClear());
+  bindClick("btnWorkflow", () => handleQuickAction("workflow started (demo)"));
+  bindClick("btnAnalyze", () => runAiAnalysis({ applyToForm: true }));
+  bindClick("btnTemplate", () => handleInsertTemplate());
+  bindClick("btnReplyTemplate", () => handleReplyWithTemplate());
+  bindClick("btnReply", () => handleAiReply());
 });

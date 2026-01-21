@@ -197,9 +197,7 @@
         </div>
 
         <div class="row">
-            <button class="btn ghost" id="btnSnooze">Snoozed</button>
-<!--            <button class="btn ghost" id="btnRefresh">Read</button>-->
-<!--            <button class="btn ghost" id="btnClear">Clear</button>-->
+<!--            <button class="btn ghost" id="btnSnooze">Snoozed</button>-->
             <button class="btn primary" id="btnApply">Apply</button>
         </div>
 
@@ -207,10 +205,21 @@
     </section>
 
     <section class="card">
+        <div class="cardHead"><div class="cardTitle">InboxAgent Reports</div></div>
+        <label class="field">
+            <span class="fieldLabel">Report emails</span>
+            <select id="reportEmailsSelect">
+                <option value="">—</option>
+            </select>
+        </label>
+        <div class="hint">Auto-loaded from InboxAgent.</div>
+    </section>
+
+    <section class="card">
         <div class="cardHead"><div class="cardTitle">Quick Actions</div></div>
 
         <div class="list">
-            <button class="btn item" id="btnWorkflow"><span>Run Workflow</span><span class="arrow">›</span></button>
+<!--            <button class="btn item" id="btnWorkflow"><span>Run Workflow</span><span class="arrow">›</span></button>-->
             <button class="btn item" id="btnTemplate"><span>Insert on Compose</span><span class="arrow">›</span></button>
 
             <label class="field" style="margin-bottom: 0.4rem;">
