@@ -1,8 +1,12 @@
 /* eslint-disable no-undef */
 
 const devCerts = require("office-addin-dev-certs");
+const dotenv = require("dotenv");
+const webpack = require("webpack");
 const CopyWebpackPlugin = require("copy-webpack-plugin");
 const HtmlWebpackPlugin = require("html-webpack-plugin");
+
+dotenv.config();
 
 const urlDev = "https://localhost:3000/";
 const urlProd = "https://www.contoso.com/"; // CHANGE THIS TO YOUR PRODUCTION DEPLOYMENT LOCATION
@@ -101,6 +105,13 @@ module.exports = async (env, options) => {
             },
           },
         ],
+      }),
+      new webpack.DefinePlugin({
+        "process.env.INBOXAGENT_API_KEY_ID": JSON.stringify(process.env.INBOXAGENT_API_KEY_ID || ""),
+        "process.env.INBOXAGENT_API_KEY_SECRET": JSON.stringify(
+          process.env.INBOXAGENT_API_KEY_SECRET || ""
+        ),
+        "process.env.REPORTS_BEARER_TOKEN": JSON.stringify(process.env.REPORTS_BEARER_TOKEN || ""),
       }),
     ],
 

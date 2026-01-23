@@ -11,16 +11,23 @@
     <div class="heroTitle">Aportio</div>
     <div class="heroSubtitle">This is the Aportio logo task pane.</div>
   </header>
-  <section class="card">
-    <div class="cardHead"><div class="cardTitle">InboxAgent Reports</div></div>
-    <label class="field">
-      <span class="fieldLabel">Report emails</span>
-      <select id="reportEmailsSelect">
-        <option value="">—</option>
-      </select>
-    </label>
-    <div class="hint">Auto-loaded from InboxAgent.</div>
-  </section>
+    <section class="card">
+        <div class="cardHead"><div class="cardTitle">InboxAgent Reports</div></div>
+        <label class="field">
+            <span class="fieldLabel">Report emails</span>
+            <select id="reportEmailsSelect">
+                <option value="">—</option>
+            </select>
+        </label>
+        <div class="row">
+            <button class="btn ghost" id="btnGetEmails">GET Emails</button>
+        </div>
+        <div class="block">
+            <div class="label">Latest email</div>
+            <div class="value" id="latestEmailSummary">—</div>
+        </div>
+        <div class="hint">Auto-loaded from InboxAgent.</div>
+    </section>
   <footer class="status">
     <div>Status:</div>
     <div id="statusText">Ready.</div>

@@ -199,6 +199,7 @@
         <div class="row">
 <!--            <button class="btn ghost" id="btnSnooze">Snoozed</button>-->
             <button class="btn primary" id="btnApply">Apply</button>
+            <button class="btn ghost" id="btnSync">Sync to InboxAgent</button>
         </div>
 
         <div class="hint">Attributes are saved to this message via Office.js custom properties.</div>
@@ -212,6 +213,13 @@
                 <option value="">—</option>
             </select>
         </label>
+        <div class="row">
+            <button class="btn ghost" id="btnGetEmails">GET Emails</button>
+        </div>
+        <div class="block">
+            <div class="label">Latest email</div>
+            <div class="value" id="latestEmailSummary">—</div>
+        </div>
         <div class="hint">Auto-loaded from InboxAgent.</div>
     </section>
 

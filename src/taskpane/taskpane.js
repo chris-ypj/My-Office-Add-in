@@ -7,14 +7,18 @@ const CATEGORY_OPTIONS = ["Product", "Support", "Sales", "Billing"];
 const PRIORITY_OPTIONS = ["Low", "Normal", "High"];
 const DEFAULT_SENTIMENT_OPTIONS = ["Negative", "Neutral", "Positive"];
 const NOTIFICATION_ICON = "icon16";
-const API_BASE_URL = "https://laboratory-than-moved-excellent.trycloudflare.com";
-const ANALYZE_URL = "https://laboratory-than-moved-excellent.trycloudflare.com/analyze";
+const API_BASE_URL = "https://attorney-healthy-weddings-attacked.trycloudflare.com";
+const ANALYZE_URL = "https://attorney-healthy-weddings-attacked.trycloudflare.com/analyze";
 const API_KEY = "24324ddadasadasdasdawqeqwewewqqwewqzx";
 const REPORTS_ENDPOINT = "/status";
+//mock backend
 const DEFAULT_REPORTS_BASE_URL =
-  "https://laboratory-than-moved-excellent.trycloudflare.com";
-const REPORTS_BEARER_TOKEN =
-  "GYIVwvd7MXGLTJVjAdySzPkI1yq5606LzPcnjqdRBwHsKxBUyrhwjIVDnkyRNlh";
+  "https://attorney-healthy-weddings-attacked.trycloudflare.com";
+const REPORTS_BEARER_TOKEN = process.env.REPORTS_BEARER_TOKEN || "";
+const INBOXAGENT_BASE_URL = "https://alignment-usage-prescribed-airline.trycloudflare.com";
+const INBOXAGENT_CUSTOMER_ID = "K7BE";
+const INBOXAGENT_API_KEY_ID = process.env.INBOXAGENT_API_KEY_ID || "";
+const INBOXAGENT_API_KEY_SECRET = process.env.INBOXAGENT_API_KEY_SECRET || "";
 const TEMPLATE_HTML = `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -374,6 +378,61 @@ function formatReportLabel(item, index) {
 function normalizeReportItems(payload) {
   if (Array.isArray(payload?.data?.reporter)) return payload.data.reporter;
   return [];
+}
+
+function setLatestEmailSummary(text) {
+  const el = document.getElementById("latestEmailSummary");
+  if (!el) return;
+  el.textContent = text || "—";
+}
+
+function formatEmailFrom(value) {
+  if (!value) return "";
+  if (typeof value === "string") return value;
+  const name = value.name || value.display_name || value.full_name || "";
+  const email = value.email || value.address || value.email_address || "";
+  if (name && email) return `${name} <${email}>`;
+  return name || email || "";
+}
+
+function formatEmailDate(value) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (!Number.isNaN(date.getTime())) {
+    return date.toLocaleString();
+  }
+  return String(value);
+}
+
+function formatEmailSummary(item) {
+  if (!item) return "—";
+  const subject = item?.subject || item?.email_subject || item?.title || "";
+  const from = formatEmailFrom(item?.from || item?.from_address || item?.sender || item?.email_from);
+  const date = formatEmailDate(item?.date || item?.sent_at || item?.created_at || item?.received_at);
+  const parts = [];
+  if (subject) parts.push(subject);
+  if (from) parts.push(`from ${from}`);
+  if (date) parts.push(date);
+  return parts.length ? parts.join(" · ") : "—";
+}
+
+function getFromAddress(item) {
+  const from = item?.from;
+  return normalizeEmailAddress(from);
+}
+
+function getMessageId(item) {
+  const raw = item?.internetMessageId || item?.messageId || "";
+  return String(raw || "");
+}
+
+function getDateSent(item) {
+  const candidate = item?.dateTimeSent || item?.dateTimeCreated || new Date().toISOString();
+  try {
+    return new Date(candidate).toISOString();
+  } catch {
+    return new Date().toISOString();
+  }
 }
 
 async function loadReportEmails() {
@@ -785,6 +844,181 @@ function getItemBodyText() {
   });
 }
 
+
+function getItemBodyHtml() {
+  return new Promise((resolve) => {
+    const item = getItem();
+    if (!item?.body?.getAsync) {
+      resolve("");
+      return;
+    }
+    item.body.getAsync(Office.CoercionType.Html, (result) => {
+      if (result.status === Office.AsyncResultStatus.Succeeded) {
+        resolve(result.value || "");
+        return;
+      }
+      resolve("");
+    });
+  });
+}
+
+function buildInboxagentUrl(path) {
+  return `${INBOXAGENT_BASE_URL.replace(/\/+$/, "")}${path}`;
+}
+
+function buildBasicAuthHeader(id, secret) {
+  if (!id || !secret) return "";
+  return `Basic ${btoa(`${id}:${secret}`)}`;
+}
+
+function normalizeEmailAddress(entry) {
+  if (!entry) return "";
+  if (typeof entry === "string") return entry;
+  return entry.emailAddress || entry.address || entry.name || "";
+}
+
+function joinEmailAddresses(entries) {
+  if (!entries) return "";
+  return entries
+    .map((entry) => normalizeEmailAddress(entry))
+    .map((value) => String(value || "").trim())
+    .filter(Boolean)
+    .join(", ");
+}
+
+function readRecipientsAsync(item, field) {
+  return new Promise((resolve) => {
+    const value = item?.[field];
+    if (!value) {
+      resolve("");
+      return;
+    }
+    if (Array.isArray(value)) {
+      resolve(joinEmailAddresses(value));
+      return;
+    }
+    if (typeof value.getAsync === "function") {
+      value.getAsync((result) => {
+        if (result.status === Office.AsyncResultStatus.Succeeded) {
+          resolve(joinEmailAddresses(result.value || []));
+          return;
+        }
+        resolve("");
+      });
+      return;
+    }
+    resolve("");
+  });
+}
+
+async function getEmails() {
+  if (!INBOXAGENT_BASE_URL || !INBOXAGENT_CUSTOMER_ID) {
+    updateStatus("emails: base url or customer id missing");
+    return;
+  }
+  const authHeader = buildBasicAuthHeader(INBOXAGENT_API_KEY_ID, INBOXAGENT_API_KEY_SECRET);
+  if (!authHeader) {
+    updateStatus("emails: API key missing");
+    return;
+  }
+
+  updateStatus("emails: fetching...");
+
+  try {
+    const response = await fetch(
+      "https://alignment-usage-prescribed-airline.trycloudflare.com/api/v2/reports/report_emails/?limit=50&offset=0&ordering=desc",
+      {
+        method: "GET",
+        headers: {
+          Authorization: authHeader,
+        },
+      }
+    );
+
+    if (!response.ok) {
+      updateStatus(`emails failed (${response.status})`);
+      return;
+    }
+
+    const data = await response.json();
+    const count = Array.isArray(data?.results) ? data.results.length : "";
+    const latest = Array.isArray(data?.results) ? data.results[0] : null;
+    setLatestEmailSummary(formatEmailSummary(latest));
+    updateStatus(count ? `emails ok (fetched: ${count})` : "emails ok");
+    await pushNotification("Emails fetched", "informationalMessage");
+  } catch (err) {
+    console.error("Email fetch failed", err);
+    setLatestEmailSummary("—");
+    updateStatus("emails failed (network error)");
+  }
+}
+
+async function syncToInboxagent() {
+  const item = getItem();
+  if (!item) {
+    updateStatus("sync: no item selected");
+    return;
+  }
+  if (!INBOXAGENT_BASE_URL || !INBOXAGENT_CUSTOMER_ID) {
+    updateStatus("sync: base url or customer id missing");
+    return;
+  }
+  const authHeader = buildBasicAuthHeader(INBOXAGENT_API_KEY_ID, INBOXAGENT_API_KEY_SECRET);
+  if (!authHeader) {
+    updateStatus("sync: API key missing");
+    return;
+  }
+
+  updateStatus("sync: sending to InboxAgent...");
+
+  const [plain, html, to, cc] = await Promise.all([
+    getItemBodyText(),
+    getItemBodyHtml(),
+    readRecipientsAsync(item, "to"),
+    readRecipientsAsync(item, "cc"),
+  ]);
+
+  const payload = {
+    plain,
+    html,
+    headers: {
+      date: getDateSent(item),
+      from: getFromAddress(item),
+      to,
+      cc,
+      subject: item.subject || "",
+      message_id: getMessageId(item),
+    },
+  };
+
+  try {
+    const response = await fetch(
+      buildInboxagentUrl(`/api/v4/features/email/${encodeURIComponent(INBOXAGENT_CUSTOMER_ID)}/classify/`),
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: authHeader,
+        },
+        body: JSON.stringify(payload),
+      }
+    );
+
+    if (!response.ok) {
+      updateStatus(`sync failed (${response.status})`);
+      return;
+    }
+
+    const data = await response.json();
+    const requestId = data?.id || data?.metadata?.request_id || "";
+    updateStatus(requestId ? `sync ok (id: ${requestId})` : "sync ok");
+    await pushNotification("InboxAgent synced", "informationalMessage");
+  } catch (err) {
+    console.error("InboxAgent sync failed", err);
+    updateStatus("sync failed (network error)");
+  }
+}
+
 async function runAiAnalysis(options = {}) {
   const { applyToForm = false } = options;
   const item = getItem();
@@ -974,6 +1208,8 @@ Office.onReady(() => {
   };
 
   bindClick("btnApply", () => handleApply());
+  bindClick("btnSync", () => syncToInboxagent());
+  bindClick("btnGetEmails", () => getEmails());
   bindClick("btnSnooze", () => handleSnooze());
   bindClick("btnRefresh", () => {
     hydrateForm({ preserveForm: true, allowLocalFallback: false, notify: true });
