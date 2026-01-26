@@ -13,12 +13,12 @@
   <DisplayName DefaultValue="Aportio" />
   <Description DefaultValue="Aportio task pane and subject popup." />
 
-  <IconUrl DefaultValue="https://aportio.github.io/My-Office-Add-in/assets/icon-32.png?v=20260120" />
-  <HighResolutionIconUrl DefaultValue="https://aportio.github.io/My-Office-Add-in/assets/icon-80.png" />
-  <SupportUrl DefaultValue="https://aportio.github.io/My-Office-Add-in/taskpane/taskpane.html" />
+  <IconUrl DefaultValue="https://chris-ypj.github.io/My-Office-Add-in/assets/icon-32.png?v=20260120" />
+  <HighResolutionIconUrl DefaultValue="https://chris-ypj.github.io/My-Office-Add-in/assets/icon-80.png" />
+  <SupportUrl DefaultValue="https://chris-ypj.github.io/My-Office-Add-in/taskpane/taskpane.html" />
 
   <AppDomains>
-    <AppDomain>https://aportio.github.io</AppDomain>
+    <AppDomain>https://chris-ypj.github.io</AppDomain>
   </AppDomains>
 
   <Hosts>
@@ -133,16 +133,16 @@
 
     <Resources>
       <bt:Images>
-        <bt:Image id="residIcon16" DefaultValue="https://aportio.github.io/My-Office-Add-in/assets/icon-16.png" />
-        <bt:Image id="icon16" DefaultValue="https://aportio.github.io/My-Office-Add-in/assets/icon-16.png" />
-        <bt:Image id="residIcon32" DefaultValue="https://aportio.github.io/My-Office-Add-in/assets/icon-32.png" />
-        <bt:Image id="residIcon80" DefaultValue="https://aportio.github.io/My-Office-Add-in/assets/icon-80.png" />
+        <bt:Image id="residIcon16" DefaultValue="https://chris-ypj.github.io/My-Office-Add-in/assets/icon-16.png" />
+        <bt:Image id="icon16" DefaultValue="https://chris-ypj.github.io/My-Office-Add-in/assets/icon-16.png" />
+        <bt:Image id="residIcon32" DefaultValue="https://chris-ypj.github.io/My-Office-Add-in/assets/icon-32.png" />
+        <bt:Image id="residIcon80" DefaultValue="https://chris-ypj.github.io/My-Office-Add-in/assets/icon-80.png" />
       </bt:Images>
 
       <bt:Urls>
-        <bt:Url id="residFunctionFile" DefaultValue="https://aportio.github.io/My-Office-Add-in/commands/commands.html" />
-        <bt:Url id="residTaskPaneUrl"  DefaultValue="https://aportio.github.io/My-Office-Add-in/taskpane/taskpane.html" />
-        <bt:Url id="residDialogUrl"    DefaultValue="https://aportio.github.io/My-Office-Add-in/dialog/dialog.html" />
+        <bt:Url id="residFunctionFile" DefaultValue="https://chris-ypj.github.io/My-Office-Add-in/commands/commands.html" />
+        <bt:Url id="residTaskPaneUrl"  DefaultValue="https://chris-ypj.github.io/My-Office-Add-in/taskpane/taskpane.html" />
+        <bt:Url id="residDialogUrl"    DefaultValue="https://chris-ypj.github.io/My-Office-Add-in/dialog/dialog.html" />
       </bt:Urls>
 
       <bt:ShortStrings>
