@@ -1,0 +1,163 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<OfficeApp
+        xmlns="http://schemas.microsoft.com/office/appforoffice/1.1"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xmlns:bt="http://schemas.microsoft.com/office/officeappbasictypes/1.0"
+        xsi:type="MailApp">
+
+  <Id>11111111-2222-3333-4444-555555555555</Id>
+  <Version>1.0.0.0</Version>
+  <ProviderName>Aportio</ProviderName>
+  <DefaultLocale>en-US</DefaultLocale>
+
+  <DisplayName DefaultValue="Aportio" />
+  <Description DefaultValue="Aportio task pane and subject popup." />
+
+  <IconUrl DefaultValue="https://chris-ypj.github.io/My-Office-Add-in/assets/icon-32.png?v=20260120" />
+  <HighResolutionIconUrl DefaultValue="https://chris-ypj.github.io/My-Office-Add-in/assets/icon-80.png" />
+  <SupportUrl DefaultValue="https://chris-ypj.github.io/My-Office-Add-in/taskpane/taskpane.html" />
+
+  <AppDomains>
+    <AppDomain>https://chris-ypj.github.io</AppDomain>
+  </AppDomains>
+
+  <Hosts>
+    <Host Name="Mailbox" />
+  </Hosts>
+
+  <!-- Mailbox 1.13 enables getSelectedItemsAsync -->
+  <Requirements>
+    <Sets DefaultMinVersion="1.13">
+      <Set Name="Mailbox" MinVersion="1.13" />
+    </Sets>
+  </Requirements>
+
+  <!-- IMPORTANT: FormSettings must appear before Permissions (schema order) -->
+  <FormSettings>
+    <Form xsi:type="ItemRead">
+      <DesktopSettings>
+        <SourceLocation DefaultValue="https://chris-ypj.github.io/My-Office-Add-in/taskpane/taskpane.html" />
+        <RequestedHeight>450</RequestedHeight>
+      </DesktopSettings>
+    </Form>
+    <Form xsi:type="ItemEdit">
+      <DesktopSettings>
+        <SourceLocation DefaultValue="https://chris-ypj.github.io/My-Office-Add-in/taskpane/taskpane.html" />
+      </DesktopSettings>
+    </Form>
+  </FormSettings>
+
+  <Permissions>ReadWriteItem</Permissions>
+
+  <Rule xsi:type="RuleCollection" Mode="Or">
+    <Rule xsi:type="ItemIs" ItemType="Message" FormType="Read" />
+    <Rule xsi:type="ItemIs" ItemType="Message" FormType="Edit" />
+  </Rule>
+
+  <DisableEntityHighlighting>false</DisableEntityHighlighting>
+
+  <!-- VersionOverrides V1_0 for legacy clients -->
+  <VersionOverrides
+          xmlns="http://schemas.microsoft.com/office/mailappversionoverrides"
+          xsi:type="VersionOverridesV1_0">
+
+    <Requirements>
+      <bt:Sets DefaultMinVersion="1.13">
+        <bt:Set Name="Mailbox" MinVersion="1.13" />
+      </bt:Sets>
+    </Requirements>
+
+    <Hosts>
+      <Host xsi:type="MailHost">
+        <DesktopFormFactor>
+
+          <!-- ExecuteFunction host -->
+          <FunctionFile resid="residFunctionFile" />
+
+          <!-- Commands on read surface -->
+          <ExtensionPoint xsi:type="MessageReadCommandSurface">
+            <OfficeTab id="TabDefault">
+              <Group id="grpInboxAgent">
+                <Label resid="residGroupLabel" />
+
+                <!-- Task button -> opens taskpane -->
+                  <Control xsi:type="Button" id="btnInboxAgentTask">
+                    <Label resid="residTaskLabel" />
+                    <Supertip>
+                      <Title resid="residTaskLabel" />
+                      <Description resid="residTaskDesc" />
+                    </Supertip>
+                    <Icon>
+                      <bt:Image size="16" resid="residIcon16" />
+                      <bt:Image size="32" resid="residIcon32" />
+                      <bt:Image size="80" resid="residIcon80" />
+                    </Icon>
+
+                    <Action xsi:type="ShowTaskpane">
+                      <SourceLocation resid="residTaskPaneUrl" />
+                    </Action>
+                  </Control>
+
+              </Group>
+            </OfficeTab>
+          </ExtensionPoint>
+
+          <!-- Commands on compose surface -->
+          <ExtensionPoint xsi:type="MessageComposeCommandSurface">
+            <OfficeTab id="TabDefault">
+              <Group id="grpInboxAgentCompose">
+                <Label resid="residGroupLabel" />
+
+                <Control xsi:type="Button" id="btnInboxAgentComposeTask">
+                  <Label resid="residTaskLabel" />
+                  <Supertip>
+                    <Title resid="residTaskLabel" />
+                    <Description resid="residTaskDesc" />
+                  </Supertip>
+                  <Icon>
+                    <bt:Image size="16" resid="residIcon16" />
+                    <bt:Image size="32" resid="residIcon32" />
+                    <bt:Image size="80" resid="residIcon80" />
+                  </Icon>
+                  <Action xsi:type="ShowTaskpane">
+                    <SourceLocation resid="residTaskPaneUrl" />
+                  </Action>
+                </Control>
+              </Group>
+            </OfficeTab>
+          </ExtensionPoint>
+
+        </DesktopFormFactor>
+      </Host>
+    </Hosts>
+
+    <Resources>
+      <bt:Images>
+        <bt:Image id="residIcon16" DefaultValue="https://chris-ypj.github.io/My-Office-Add-in/assets/icon-16.png" />
+        <bt:Image id="icon16" DefaultValue="https://chris-ypj.github.io/My-Office-Add-in/assets/icon-16.png" />
+        <bt:Image id="residIcon32" DefaultValue="https://chris-ypj.github.io/My-Office-Add-in/assets/icon-32.png" />
+        <bt:Image id="residIcon80" DefaultValue="https://chris-ypj.github.io/My-Office-Add-in/assets/icon-80.png" />
+      </bt:Images>
+
+      <bt:Urls>
+        <bt:Url id="residFunctionFile" DefaultValue="https://chris-ypj.github.io/My-Office-Add-in/commands/commands.html" />
+        <bt:Url id="residTaskPaneUrl"  DefaultValue="https://chris-ypj.github.io/My-Office-Add-in/taskpane/taskpane.html" />
+        <bt:Url id="residDialogUrl"    DefaultValue="https://chris-ypj.github.io/My-Office-Add-in/dialog/dialog.html" />
+      </bt:Urls>
+
+      <bt:ShortStrings>
+        <bt:String id="residGroupLabel" DefaultValue="Aportio" />
+        <bt:String id="residTaskLabel" DefaultValue="Aportio Task" />
+        <bt:String id="residActionLabel" DefaultValue="Aportio Action" />
+        <bt:String id="residAportioTaskLabel" DefaultValue="Aportio" />
+      </bt:ShortStrings>
+
+      <bt:LongStrings>
+        <bt:String id="residTaskDesc" DefaultValue="Open Aportio task pane." />
+        <bt:String id="residActionDesc" DefaultValue="Show the subject of the selected email(s)." />
+        <bt:String id="residAportioTaskDesc" DefaultValue="Open the Aportio logo task pane." />
+      </bt:LongStrings>
+    </Resources>
+
+  </VersionOverrides>
+</OfficeApp>
