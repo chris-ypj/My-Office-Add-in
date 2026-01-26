@@ -1,0 +1,42 @@
+<!doctype html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Aportio</title>
+    <style>
+        body { font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 14px; }
+        h2 { font-size: 14px; margin: 0 0 10px; }
+        ul { margin: 0; padding-left: 18px; }
+        li { margin: 6px 0; font-size: 13px; }
+        .muted { margin-top: 10px; font-size: 11px; opacity: 0.75; }
+    </style>
+</head>
+<body>
+<h2>Selected Subject(s)</h2>
+<ul id="list"></ul>
+<div class="muted">Close this popup when done.</div>
+
+<script>
+    function parseSubjects() {
+        const params = new URLSearchParams(window.location.search);
+        const raw = params.get("subjects");
+        if (!raw) return ["(No subject available)"];
+        try {
+            const decoded = decodeURIComponent(raw);
+            const arr = JSON.parse(decoded);
+            return Array.isArray(arr) ? arr : [String(arr)];
+        } catch (e) {
+            return ["(Failed to parse subjects)"];
+        }
+    }
+
+    const list = document.getElementById("list");
+    parseSubjects().forEach((s) => {
+        const li = document.createElement("li");
+        li.textContent = s;
+        list.appendChild(li);
+    });
+</script>
+</body>
+</html>
