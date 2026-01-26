@@ -7,13 +7,13 @@ const CATEGORY_OPTIONS = ["Product", "Support", "Sales", "Billing"];
 const PRIORITY_OPTIONS = ["Low", "Normal", "High"];
 const DEFAULT_SENTIMENT_OPTIONS = ["Negative", "Neutral", "Positive"];
 const NOTIFICATION_ICON = "icon16";
-const API_BASE_URL = "https://attorney-healthy-weddings-attacked.trycloudflare.com";
-const ANALYZE_URL = "https://attorney-healthy-weddings-attacked.trycloudflare.com/analyze";
+const API_BASE_URL = "https://congress-library-prayer-international.trycloudflare.com";
+const ANALYZE_URL = "https://congress-library-prayer-international.trycloudflare.com/analyze";
 const API_KEY = "24324ddadasadasdasdawqeqwewewqqwewqzx";
 const REPORTS_ENDPOINT = "/status";
 //mock backend
 const DEFAULT_REPORTS_BASE_URL =
-  "https://attorney-healthy-weddings-attacked.trycloudflare.com";
+  "https://congress-library-prayer-international.trycloudflare.com";
 const REPORTS_BEARER_TOKEN = process.env.REPORTS_BEARER_TOKEN || "";
 const INBOXAGENT_BASE_URL = "https://alignment-usage-prescribed-airline.trycloudflare.com";
 const INBOXAGENT_CUSTOMER_ID = "K7BE";
