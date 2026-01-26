@@ -159,6 +159,88 @@
             </OfficeTab>
           </ExtensionPoint>
 
+          <!-- Commands on appointment organizer surface -->
+          <ExtensionPoint xsi:type="AppointmentOrganizerCommandSurface">
+            <OfficeTab id="TabDefault">
+              <Group id="grpInboxAgentApptOrg">
+                <Label resid="residGroupLabel" />
+
+                <Control xsi:type="Button" id="btnInboxAgentApptOrgTask">
+                  <Label resid="residTaskLabel" />
+                  <Supertip>
+                    <Title resid="residTaskLabel" />
+                    <Description resid="residTaskDesc" />
+                  </Supertip>
+                  <Icon>
+                    <bt:Image size="16" resid="residIcon16" />
+                    <bt:Image size="32" resid="residIcon32" />
+                    <bt:Image size="80" resid="residIcon80" />
+                  </Icon>
+                  <Action xsi:type="ShowTaskpane">
+                    <SourceLocation resid="residTaskPaneUrl" />
+                  </Action>
+                </Control>
+
+                <Control xsi:type="Button" id="btnAnalyzeCommandApptOrg">
+                  <Label resid="residAnalyzeLabel" />
+                  <Supertip>
+                    <Title resid="residAnalyzeLabel" />
+                    <Description resid="residAnalyzeDesc" />
+                  </Supertip>
+                  <Icon>
+                    <bt:Image size="16" resid="residIcon16" />
+                    <bt:Image size="32" resid="residIcon32" />
+                    <bt:Image size="80" resid="residIcon80" />
+                  </Icon>
+                  <Action xsi:type="ExecuteFunction">
+                    <FunctionName>onAnalyzeCommand</FunctionName>
+                  </Action>
+                </Control>
+              </Group>
+            </OfficeTab>
+          </ExtensionPoint>
+
+          <!-- Commands on appointment attendee surface -->
+          <ExtensionPoint xsi:type="AppointmentAttendeeCommandSurface">
+            <OfficeTab id="TabDefault">
+              <Group id="grpInboxAgentApptAtt">
+                <Label resid="residGroupLabel" />
+
+                <Control xsi:type="Button" id="btnInboxAgentApptAttTask">
+                  <Label resid="residTaskLabel" />
+                  <Supertip>
+                    <Title resid="residTaskLabel" />
+                    <Description resid="residTaskDesc" />
+                  </Supertip>
+                  <Icon>
+                    <bt:Image size="16" resid="residIcon16" />
+                    <bt:Image size="32" resid="residIcon32" />
+                    <bt:Image size="80" resid="residIcon80" />
+                  </Icon>
+                  <Action xsi:type="ShowTaskpane">
+                    <SourceLocation resid="residTaskPaneUrl" />
+                  </Action>
+                </Control>
+
+                <Control xsi:type="Button" id="btnAnalyzeCommandApptAtt">
+                  <Label resid="residAnalyzeLabel" />
+                  <Supertip>
+                    <Title resid="residAnalyzeLabel" />
+                    <Description resid="residAnalyzeDesc" />
+                  </Supertip>
+                  <Icon>
+                    <bt:Image size="16" resid="residIcon16" />
+                    <bt:Image size="32" resid="residIcon32" />
+                    <bt:Image size="80" resid="residIcon80" />
+                  </Icon>
+                  <Action xsi:type="ExecuteFunction">
+                    <FunctionName>onAnalyzeCommand</FunctionName>
+                  </Action>
+                </Control>
+              </Group>
+            </OfficeTab>
+          </ExtensionPoint>
+
         </DesktopFormFactor>
       </Host>
     </Hosts>
