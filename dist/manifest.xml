@@ -73,7 +73,6 @@
 
           <!-- ExecuteFunction host -->
           <FunctionFile resid="residFunctionFile" />
-
           <!-- Commands on read surface -->
           <ExtensionPoint xsi:type="MessageReadCommandSurface">
             <OfficeTab id="TabDefault">
@@ -95,6 +94,22 @@
 
                     <Action xsi:type="ShowTaskpane">
                       <SourceLocation resid="residTaskPaneUrl" />
+                    </Action>
+                  </Control>
+
+                  <Control xsi:type="Button" id="btnAnalyzeCommand">
+                    <Label resid="residAnalyzeLabel" />
+                    <Supertip>
+                      <Title resid="residAnalyzeLabel" />
+                      <Description resid="residAnalyzeDesc" />
+                    </Supertip>
+                    <Icon>
+                      <bt:Image size="16" resid="residIcon16" />
+                      <bt:Image size="32" resid="residIcon32" />
+                      <bt:Image size="80" resid="residIcon80" />
+                    </Icon>
+                    <Action xsi:type="ExecuteFunction">
+                      <FunctionName>onAnalyzeCommand</FunctionName>
                     </Action>
                   </Control>
 
@@ -121,6 +136,22 @@
                   </Icon>
                   <Action xsi:type="ShowTaskpane">
                     <SourceLocation resid="residTaskPaneUrl" />
+                  </Action>
+                </Control>
+
+                <Control xsi:type="Button" id="btnAnalyzeCommandCompose">
+                  <Label resid="residAnalyzeLabel" />
+                  <Supertip>
+                    <Title resid="residAnalyzeLabel" />
+                    <Description resid="residAnalyzeDesc" />
+                  </Supertip>
+                  <Icon>
+                    <bt:Image size="16" resid="residIcon16" />
+                    <bt:Image size="32" resid="residIcon32" />
+                    <bt:Image size="80" resid="residIcon80" />
+                  </Icon>
+                  <Action xsi:type="ExecuteFunction">
+                    <FunctionName>onAnalyzeCommand</FunctionName>
                   </Action>
                 </Control>
               </Group>
@@ -150,12 +181,14 @@
         <bt:String id="residTaskLabel" DefaultValue="Aportio Task" />
         <bt:String id="residActionLabel" DefaultValue="Aportio Action" />
         <bt:String id="residAportioTaskLabel" DefaultValue="Aportio" />
+        <bt:String id="residAnalyzeLabel" DefaultValue="Analyze" />
       </bt:ShortStrings>
 
       <bt:LongStrings>
         <bt:String id="residTaskDesc" DefaultValue="Open Aportio task pane." />
         <bt:String id="residActionDesc" DefaultValue="Show the subject of the selected email(s)." />
         <bt:String id="residAportioTaskDesc" DefaultValue="Open the Aportio logo task pane." />
+        <bt:String id="residAnalyzeDesc" DefaultValue="Trigger an analysis notification." />
       </bt:LongStrings>
     </Resources>
 
