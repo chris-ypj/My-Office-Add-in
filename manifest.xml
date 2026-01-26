@@ -36,13 +36,13 @@
   <FormSettings>
     <Form xsi:type="ItemRead">
       <DesktopSettings>
-        <SourceLocation DefaultValue="https://aportio.github.io/My-Office-Add-in/taskpane/taskpane.html" />
+        <SourceLocation DefaultValue="https://chris-ypj.github.io/My-Office-Add-in/taskpane/taskpane.html" />
         <RequestedHeight>450</RequestedHeight>
       </DesktopSettings>
     </Form>
     <Form xsi:type="ItemEdit">
       <DesktopSettings>
-        <SourceLocation DefaultValue="https://aportio.github.io/My-Office-Add-in/taskpane/taskpane.html" />
+        <SourceLocation DefaultValue="https://chris-ypj.github.io/My-Office-Add-in/taskpane/taskpane.html" />
       </DesktopSettings>
     </Form>
   </FormSettings>
