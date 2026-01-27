@@ -114,6 +114,22 @@
                     </Action>
                   </Control>
 
+                  <Control xsi:type="Button" id="btnSubjectPopup">
+                    <Label resid="residActionLabel" />
+                    <Supertip>
+                      <Title resid="residActionLabel" />
+                      <Description resid="residActionDesc" />
+                    </Supertip>
+                    <Icon>
+                      <bt:Image size="16" resid="residIcon16" />
+                      <bt:Image size="32" resid="residIcon32" />
+                      <bt:Image size="80" resid="residIcon80" />
+                    </Icon>
+                    <Action xsi:type="ExecuteFunction">
+                      <FunctionName>showSubjectPopup</FunctionName>
+                    </Action>
+                  </Control>
+
               </Group>
             </OfficeTab>
           </ExtensionPoint>
